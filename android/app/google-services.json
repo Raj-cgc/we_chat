@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "486705346592",
+    "project_id": "we-chat-18f25",
+    "storage_bucket": "we-chat-18f25.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:486705346592:android:9bb1e14d90271158882445",
+        "android_client_info": {
+          "package_name": "com.example.we_chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "486705346592-lbg9sk6kos45lppjp7m4594dfeek436t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.we_chat",
+            "certificate_hash": "d252f873111c282dde2fb49ec307360c562cb8de"
+          }
+        },
+        {
+          "client_id": "486705346592-3805ck018lr1m5vb4u40qb29uv1e5663.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8mk-k018xt0ahaaKw0GfpY9qmBzs68wg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "486705346592-3805ck018lr1m5vb4u40qb29uv1e5663.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "486705346592-oos6b7csni6t4an41ohj0eardsh3ugid.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.weChat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
