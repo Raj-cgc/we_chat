@@ -65,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
             bottom: mq.height * 0.15,
             width: mq.width,
             child: Text(
-              "MADE BY RAJ",
+              "MADE BY RAJ , RAHUL AND RITIK",
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.black,

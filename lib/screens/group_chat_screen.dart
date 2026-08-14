@@ -3,25 +3,23 @@ import 'dart:io';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:we_chat/api/apis.dart';
-import 'package:we_chat/helper/my_date_util.dart';
 import 'package:we_chat/main.dart';
-import 'package:we_chat/models/chat_user.dart';
 import 'package:we_chat/models/message.dart';
-import 'package:we_chat/screens/view_profile_screen.dart';
+import 'package:we_chat/screens/group_profile_screen.dart';
 import 'package:we_chat/widgets/message_card.dart';
 
-class ChatScreen extends StatefulWidget {
-  final ChatUser user;
-  const ChatScreen({super.key, required this.user});
+class GroupChatScreen extends StatefulWidget {
+  final Map<String, dynamic> groupData;
+
+  const GroupChatScreen({super.key, required this.groupData});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<GroupChatScreen> createState() => _GroupChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _GroupChatScreenState extends State<GroupChatScreen> {
   List<Message> _list = [];
   final _textController = TextEditingController();
   bool _showEmoji = false;
@@ -30,6 +28,10 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     mq = MediaQuery.of(context).size;
+    final String groupName = widget.groupData['name'] ?? 'Group';
+    final String groupId = widget.groupData['id'] ?? '';
+    final List members = widget.groupData['members'] ?? [];
+
     return GestureDetector(
       onTap: FocusScope.of(context).unfocus,
       child: PopScope(
@@ -54,47 +56,110 @@ class _ChatScreenState extends State<ChatScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  _appBar(),
+                  // App Bar Header (Tapping opens Group Profile)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF242636)
+                                  .withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: const Icon(CupertinoIcons.chevron_left,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Group Header Info Tab -> opens Group Profile
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => GroupProfileScreen(
+                                      groupData: widget.groupData),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Color(0xFFA855F7),
+                                        Color(0xFF7C3AED)
+                                      ],
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.group_solid,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        groupName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "${members.length} members",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   Container(
                     height: 1,
                     color: Colors.white.withValues(alpha: 0.06),
                   ),
 
-                  const SizedBox(height: 12),
-
-                  // Glossy Date Pill Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF242636),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      "Today",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
                   const SizedBox(height: 8),
 
                   Expanded(
                     child: StreamBuilder(
-                      stream: APIs.getAllMessages(widget.user),
+                      stream: APIs.getGroupMessages(groupId),
                       builder: (context, snapshot) {
                         switch (snapshot.connectionState) {
                           case ConnectionState.waiting:
@@ -122,10 +187,10 @@ class _ChatScreenState extends State<ChatScreen> {
                             } else {
                               return const Center(
                                 child: Text(
-                                  "Say Hi! 👋",
+                                  "Welcome to the Group! 👋",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     color: Colors.white30,
                                   ),
                                 ),
@@ -151,7 +216,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
 
-                  _chatInput(),
+                  _chatInput(groupId),
 
                   if (_showEmoji)
                     SizedBox(
@@ -175,171 +240,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _appBar() {
-    return StreamBuilder(
-      stream: APIs.getUserInfo(widget.user),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.docs;
-        final list =
-            data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
-
-        final currentUser = list.isNotEmpty ? list[0] : widget.user;
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              // Glossy Circle Back Button <
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF242636).withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: const Icon(CupertinoIcons.chevron_left,
-                      color: Colors.white, size: 20),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // Avatar
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ViewProfileScreen(user: widget.user),
-                    ),
-                  );
-                },
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: CachedNetworkImage(
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                        imageUrl: currentUser.image,
-                        errorWidget: (context, url, error) => CircleAvatar(
-                          radius: 22,
-                          backgroundColor: const Color(0xFF7C3AED),
-                          child: Text(
-                            currentUser.name.isNotEmpty
-                                ? currentUser.name[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (currentUser.isOnline)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFF13141C), width: 2),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // Name & Status
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ViewProfileScreen(user: widget.user),
-                      ),
-                    );
-                  },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        currentUser.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        currentUser.isOnline
-                            ? 'Online'
-                            : MyDateUtil.getLastActiveTime(
-                                context: context,
-                                lastActive: currentUser.lastActive,
-                              ),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: currentUser.isOnline
-                              ? const Color(0xFF10B981)
-                              : Colors.white.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Glossy Circle Option Button ⋮
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ViewProfileScreen(user: widget.user),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF242636).withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: const Icon(CupertinoIcons.ellipsis_vertical,
-                      color: Colors.white, size: 20),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _chatInput() {
+  Widget _chatInput(String groupId) {
     return Padding(
       padding: EdgeInsets.symmetric(
         vertical: mq.height * 0.012,
@@ -347,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: Row(
         children: [
-          // Plus Button + (Glossy Circle)
+          // Plus Button + (Upload Image)
           GestureDetector(
             onTap: () async {
               final ImagePicker picker = ImagePicker();
@@ -357,7 +258,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
               for (var i in images) {
                 setState(() => _isUploading = true);
-                await APIs.sendChatImage(widget.user, File(i.path));
+                await APIs.sendGroupImage(groupId, File(i.path));
                 setState(() => _isUploading = false);
               }
             },
@@ -381,7 +282,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const SizedBox(width: 10),
 
-          // Glossy Dark Pill Input Field
+          // Input field
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -407,7 +308,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
                       },
                       decoration: InputDecoration(
-                        hintText: 'Write a message',
+                        hintText: 'Message group...',
                         hintStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.4),
                           fontSize: 14,
@@ -436,12 +337,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const SizedBox(width: 10),
 
-          // Glossy Purple Circle Send Button
+          // Send button
           GestureDetector(
             onTap: () {
               if (_textController.text.trim().isNotEmpty) {
-                APIs.sendMessage(
-                  widget.user,
+                APIs.sendGroupMessage(
+                  groupId,
                   _textController.text.trim(),
                   Type.text,
                 );

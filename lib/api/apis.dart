@@ -133,7 +133,7 @@ class APIs {
     Type type,
   ) async {
     //message sending time used as uid
-    final time = DateTime.now().microsecondsSinceEpoch.toString();
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
 
     //message to send
     final Message message = Message(
@@ -195,21 +195,164 @@ class APIs {
 
   //delete message
   static Future<void> deleteMessage(Message message) async {
-    await firestore
-        .collection('chats/${getConversationID(message.toId)}/messages/')
-        .doc(message.sent)
-        .delete();
+    final isGroup = message.toId.startsWith('group_');
+
+    if (isGroup) {
+      await firestore
+          .collection('groups/${message.toId}/messages')
+          .doc(message.sent)
+          .delete();
+    } else {
+      await firestore
+          .collection('chats/${getConversationID(message.toId)}/messages/')
+          .doc(message.sent)
+          .delete();
+    }
 
     if (message.type == Type.image) {
-      await storage.refFromURL(message.msg).delete();
+      try {
+        await storage.refFromURL(message.msg).delete();
+      } catch (e) {
+        log('Error deleting image from storage: $e');
+      }
     }
   }
 
   //update message
   static Future<void> updateMessage(Message message, String updatedMsg) async {
+    final isGroup = message.toId.startsWith('group_');
+
+    if (isGroup) {
+      await firestore
+          .collection('groups/${message.toId}/messages')
+          .doc(message.sent)
+          .update({'msg': updatedMsg});
+    } else {
+      await firestore
+          .collection('chats/${getConversationID(message.toId)}/messages/')
+          .doc(message.sent)
+          .update({'msg': updatedMsg});
+    }
+  }
+
+  /// *********** Group Chat Related APIs *************
+
+  // create a new group with max 10 members
+  static Future<void> createGroup(
+      String groupName, List<ChatUser> selectedMembers) async {
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+    final groupId = 'group_$time';
+
+    final memberIds = [user.uid, ...selectedMembers.map((e) => e.id)];
+
+    final groupData = {
+      'id': groupId,
+      'name': groupName,
+      'image': '',
+      'members': memberIds,
+      'admin': user.uid,
+      'createdAt': time,
+      'lastMessage': 'Group created by ${me.name}',
+      'lastMessageTime': time,
+      'isGroup': true,
+    };
+
+    await firestore.collection('groups').doc(groupId).set(groupData);
+
+    // Add initial system creation message inside group
+    final initialMessage = Message(
+      toId: groupId,
+      msg: 'Group created by ${me.name}',
+      read: time,
+      type: Type.text,
+      fromId: user.uid,
+      sent: time,
+    );
+
     await firestore
-        .collection('chats/${getConversationID(message.toId)}/messages/')
-        .doc(message.sent)
-        .update({'msg': updatedMsg});
+        .collection('groups/$groupId/messages')
+        .doc(time)
+        .set(initialMessage.toJson());
+  }
+
+  // stream of user groups
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getUserGroups() {
+    return firestore
+        .collection('groups')
+        .where('members', arrayContains: user.uid)
+        .snapshots();
+  }
+
+  // stream of all messages in a group
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getGroupMessages(
+      String groupId) {
+    return firestore
+        .collection('groups/$groupId/messages')
+        .orderBy('sent', descending: true)
+        .snapshots();
+  }
+
+  // send group message
+  static Future<void> sendGroupMessage(
+      String groupId, String msg, Type type) async {
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+
+    final message = Message(
+      toId: groupId,
+      msg: msg,
+      read: '',
+      type: type,
+      fromId: user.uid,
+      sent: time,
+    );
+
+    final ref = firestore.collection('groups/$groupId/messages');
+    await ref.doc(time).set(message.toJson());
+
+    // update group last message info
+    await firestore.collection('groups').doc(groupId).update({
+      'lastMessage': type == Type.text ? msg : '📷 Photo',
+      'lastMessageTime': time,
+    });
+  }
+
+  // send group chat image
+  static Future<void> sendGroupImage(String groupId, File file) async {
+    final ext = file.path.split('.').last;
+    final ref = storage.ref().child(
+      'group_images/$groupId/${DateTime.now().millisecondsSinceEpoch}.$ext',
+    );
+
+    await ref.putFile(file, SettableMetadata(contentType: 'image/$ext'));
+    final imageUrl = await ref.getDownloadURL();
+    await sendGroupMessage(groupId, imageUrl, Type.image);
+  }
+
+  // leave a group
+  static Future<void> leaveGroup(String groupId) async {
+    await firestore.collection('groups').doc(groupId).update({
+      'members': FieldValue.arrayRemove([user.uid]),
+    });
+  }
+
+  // get specific group info stream
+  static Stream<DocumentSnapshot<Map<String, dynamic>>> getGroupInfo(
+      String groupId) {
+    return firestore.collection('groups').doc(groupId).snapshots();
+  }
+
+  // get group members users
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getGroupMembers(
+      List memberIds) {
+    if (memberIds.isEmpty) {
+      return firestore
+          .collection('users')
+          .where('id', isEqualTo: '')
+          .snapshots();
+    }
+    return firestore
+        .collection('users')
+        .where('id', whereIn: memberIds.take(10).toList())
+        .snapshots();
   }
 }

@@ -18,85 +18,240 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Animate the logo
-    Future.delayed(Duration(milliseconds: 500), () {
-      setState(() {
-        _isAnimate = true;
-      });
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isAnimate = true;
+        });
+      }
     });
   }
 
   _handleGoogleBtnClick() async {
-    //to show progress bar
     Dialogs.showProgressBar(context);
-    await AutProvider.signInWithGoogle(context).then((user) async {
-      //to hid progress bar
-      Navigator.pop(context);
 
-      if (user != null) {
-        print(user.user);
+    final user = await AutProvider.signInWithGoogle(context);
 
-        if (await APIs.userExists()) {
+    if (mounted) Navigator.pop(context);
+
+    if (user != null && mounted) {
+      if (await APIs.userExists()) {
+        if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
-        } else {
-          await APIs.createUser().then((value) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => HomeScreen()),
-            );
-          });
+        }
+      } else {
+        await APIs.createUser();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
         }
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     mq = MediaQuery.of(context).size;
     return Scaffold(
-      appBar: AppBar(title: Text('Welcome to We Chat')),
-      body: Stack(
-        children: [
-          AnimatedPositioned(
-            top: mq.height * 0.15,
-            width: mq.width * 0.5,
-            right: _isAnimate ? mq.width * 0.25 : -mq.width * 0.5,
-            duration: Duration(milliseconds: 700),
-            child: Image.asset("images/icon.png"),
-          ),
-          Positioned(
-            bottom: mq.height * 0.15,
-            left: mq.width * 0.05,
-            width: mq.width * 0.9,
-            height: mq.height * 0.07,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 182, 212, 144),
+      backgroundColor: const Color(0xFF0D0E11),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Background subtle gradient glow & painter
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _DashedPathPainter(),
               ),
-              onPressed: () {
-                _handleGoogleBtnClick();
-              },
-              icon: Image.asset("images/google.png", height: 45),
-              label: RichText(
-                text: TextSpan(
-                  style: TextStyle(color: Colors.black, fontSize: 19),
-                  children: [
-                    TextSpan(text: 'Login with '),
-                    TextSpan(
-                      text: 'Google',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            Positioned(
+              top: mq.height * 0.15,
+              left: mq.width * 0.2,
+              child: Container(
+                width: mq.width * 0.6,
+                height: mq.width * 0.6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                      blurRadius: 80,
+                      spreadRadius: 20,
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  // 1. Centered Hero Content Block
+                  Expanded(
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 800),
+                      opacity: _isAnimate ? 1.0 : 0.0,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // App Icon with subtle glow container
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF181920),
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7C3AED)
+                                      .withValues(alpha: 0.25),
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Image.asset(
+                              "images/icon.png",
+                              height: 80,
+                              width: 80,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                Icons.chat_bubble_rounded,
+                                color: Color(0xFF7C3AED),
+                                size: 70,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 28),
+
+                          // App Name "We Chat"
+                          ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Colors.white, Color(0xFFA78BFA)],
+                            ).createShader(bounds),
+                            child: const Text(
+                              "We Chat",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Hero Title
+                          const Text(
+                            "Stay Connected,\nYour Way",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              height: 1.25,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Subtitle
+                          Text(
+                            "Experience seamless conversations like never before.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 15,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 2. Bottom "Login with Google" Action Button
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 32.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 6,
+                          shadowColor: Colors.black45,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: _handleGoogleBtnClick,
+                        icon: Image.asset(
+                          'images/google.png',
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.g_mobiledata,
+                            color: Color(0xFFEA4335),
+                            size: 32,
+                          ),
+                        ),
+                        label: const Text(
+                          "Continue with Google",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _DashedPathPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(size.width * 0.1, size.height * 0.15)
+      ..cubicTo(
+        size.width * 0.9,
+        size.height * 0.3,
+        size.width * 0.1,
+        size.height * 0.6,
+        size.width * 0.5,
+        size.height * 0.8,
+      );
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

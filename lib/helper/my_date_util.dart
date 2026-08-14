@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 
-//for getting formatted time from millisecondsSinceEpochs String
+//for getting formatted time from millisecondsSinceEpochs / microsecondsSinceEpochs String
 class MyDateUtil {
+  // Utility method to safely parse timestamp from epoch String
+  static DateTime _getDateTime(String time) {
+    final int value = int.tryParse(time) ?? 0;
+    if (value <= 0) return DateTime.now();
+
+    // If timestamp is in microseconds (16+ digits)
+    if (value > 100000000000000) {
+      return DateTime.fromMicrosecondsSinceEpoch(value);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+
   static String getFormattedTime({
     required BuildContext context,
     required String time,
   }) {
-    final date = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
+    final date = _getDateTime(time);
     return TimeOfDay.fromDateTime(date).format(context);
   }
 
@@ -14,7 +26,7 @@ class MyDateUtil {
     required BuildContext context,
     required String time,
   }) {
-    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
+    final DateTime sent = _getDateTime(time);
     final DateTime now = DateTime.now();
 
     final formattedTime = TimeOfDay.fromDateTime(sent).format(context);
@@ -36,7 +48,7 @@ class MyDateUtil {
     required String time,
     bool showYear = false,
   }) {
-    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
+    final DateTime sent = _getDateTime(time);
     final DateTime now = DateTime.now();
 
     if (now.day == sent.day &&
@@ -60,17 +72,20 @@ class MyDateUtil {
     //if time is not available then return below statement
     if (i == -1) return 'Last seen not available';
 
-    DateTime time = DateTime.fromMillisecondsSinceEpoch(i);
+    DateTime time = _getDateTime(lastActive);
     DateTime now = DateTime.now();
 
     String formattedTime = TimeOfDay.fromDateTime(time).format(context);
     if (time.day == now.day &&
         time.month == now.month &&
-        time.year == time.year) {
+        time.year == now.year) {
       return 'Last seen today at $formattedTime';
     }
 
-    if ((now.difference(time).inHours / 24).round() == 1) {
+    final DateTime yesterday = now.subtract(const Duration(days: 1));
+    if (time.day == yesterday.day &&
+        time.month == yesterday.month &&
+        time.year == yesterday.year) {
       return 'Last seen yesterday at $formattedTime';
     }
 
@@ -80,7 +95,7 @@ class MyDateUtil {
   }
 
   //get month name from month number
-  static _getMonthName(DateTime date) {
+  static String _getMonthName(DateTime date) {
     switch (date.month) {
       case 1:
         return 'Jan';

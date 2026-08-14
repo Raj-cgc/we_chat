@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:we_chat/api/apis.dart';
 import 'package:we_chat/helper/dialogs.dart';
@@ -11,51 +13,45 @@ class AutProvider extends ChangeNotifier {
 
   static Future<void> _initSignin() async {
     if (!isInitialized) {
-      await googleSignInn.initialize(
-        serverClientId:
-            "486705346592-3805ck018lr1m5vb4u40qb29uv1e5663.apps.googleusercontent.com",
-      );
+      final webClientId = dotenv.env['FIREBASE_WEB_CLIENT_ID'] ??
+          "486705346592-3805ck018lr1m5vb4u40qb29uv1e5663.apps.googleusercontent.com";
+      if (kIsWeb) {
+        await googleSignInn.initialize(
+          clientId: webClientId,
+        );
+      } else {
+        await googleSignInn.initialize(
+          serverClientId: webClientId,
+          clientId: webClientId,
+        );
+      }
+      isInitialized = true;
     }
-    isInitialized = true;
   }
 
   //for signin
   static Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
-      _initSignin();
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        return await APIs.auth.signInWithPopup(googleProvider);
+      }
 
-      final GoogleSignInAccount account = await googleSignInn.authenticate();
+      await _initSignin();
 
-      // ignore: unnecessary_null_comparison
+      final GoogleSignInAccount? account = await googleSignInn.authenticate();
+
       if (account == null) {
-        throw FirebaseAuthException(
-          code: 'SIGNIN ABORTED BY USER',
-          message: 'Signin Incomplete',
-        );
+        return null;
       }
 
       final idToken = account.authentication.idToken;
       final authClient = account.authorizationClient;
 
-      GoogleSignInClientAuthorization? auth = await authClient
-          .authorizationForScopes(['email', 'profile']);
-
+      final auth =
+          await authClient.authorizationForScopes(['email', 'profile']);
       final accessToken = auth?.accessToken;
 
-      if (accessToken == null) {
-        final auth2 = await authClient.authorizationForScopes([
-          'email',
-          'profile',
-        ]);
-
-        if (auth2?.accessToken == null) {
-          throw FirebaseAuthException(
-            code: 'No Access Token',
-            message: 'Fail to Retrive google access token',
-          );
-        }
-        auth = auth2;
-      }
       final credential = GoogleAuthProvider.credential(
         accessToken: accessToken,
         idToken: idToken,
@@ -63,8 +59,10 @@ class AutProvider extends ChangeNotifier {
 
       return await APIs.auth.signInWithCredential(credential);
     } catch (e) {
-      print(e);
-      Dialogs.showSnackbar(context, 'Something went wrong ...Check Internet');
+      print('Google Sign-In Error: $e');
+      if (context.mounted) {
+        Dialogs.showSnackbar(context, 'Login Error: ${e.toString()}');
+      }
       return null;
     }
   }

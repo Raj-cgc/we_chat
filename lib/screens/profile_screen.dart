@@ -1,7 +1,9 @@
 import "dart:developer";
 import "dart:io";
 import "package:firebase_auth/firebase_auth.dart";
+import "package:flutter/cupertino.dart";
 import "package:flutter/material.dart";
+import "package:cached_network_image/cached_network_image.dart";
 import "package:image_picker/image_picker.dart";
 import "package:we_chat/api/apis.dart";
 import "package:we_chat/helper/dialogs.dart";
@@ -24,27 +26,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _image;
 
   _handleLogoutBtnClick() async {
-    //show progress dialog
     Dialogs.showProgressBar(context);
-
-    //update active status to false before logging off
     APIs.updateActiveStatus(false);
 
-    //sign out of the app
     await AutProvider.signOut().then((value) async {
-      //for removing progressbar from navigation stack
-      Navigator.pop(context);
-
-      //for removing home screen from navigation stack...or else
-      //we will come back to home screen if clicked back from loginScreen
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
 
       APIs.auth = FirebaseAuth.instance;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
 
       log('logged out');
     });
@@ -52,19 +48,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    mq = MediaQuery.of(context).size;
     return GestureDetector(
-      //for hiding keyboard on pressing anywhere on screen
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        appBar: AppBar(title: Text('Profile Screen')),
+        backgroundColor: const Color(0xFF0F1015),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0F1015),
+          leading: IconButton(
+            icon: const Icon(CupertinoIcons.chevron_left, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            'Profile',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
 
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: FloatingActionButton.extended(
-            backgroundColor: Colors.redAccent,
+            backgroundColor: const Color(0xFFEF4444),
             onPressed: _handleLogoutBtnClick,
-            icon: Icon(Icons.logout),
-            label: Text('Logout'),
+            icon: const Icon(Icons.logout, color: Colors.white),
+            label: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
 
@@ -73,8 +83,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             key: _formKey,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: mq.width * 0.05,
-                vertical: mq.height * 0.05,
+                horizontal: mq.width * 0.06,
+                vertical: mq.height * 0.03,
               ),
               child: Column(
                 children: [
@@ -82,54 +92,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       _image != null
                           ? CircleAvatar(
-                            //if image not null then it means chosen from gallery
-                            //use that photo in circleAvatar
-                            backgroundImage: FileImage(File(_image!)),
-                            radius: mq.height * 0.11,
-                          )
-                          : CircleAvatar(
-                            //else use the default photo from networkImage
-                            backgroundImage: NetworkImage(widget.user.image),
-                            radius: mq.height * 0.11,
-                          ),
-
+                              backgroundImage: FileImage(File(_image!)),
+                              radius: mq.height * 0.08,
+                            )
+                          : ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(mq.height * 0.08),
+                              child: CachedNetworkImage(
+                                width: mq.height * 0.16,
+                                height: mq.height * 0.16,
+                                fit: BoxFit.cover,
+                                imageUrl: widget.user.image,
+                                errorWidget: (context, url, error) =>
+                                    CircleAvatar(
+                                  radius: mq.height * 0.08,
+                                  backgroundColor: const Color(0xFF9333EA),
+                                  child: Text(
+                                    widget.user.name.isNotEmpty
+                                        ? widget.user.name[0].toUpperCase()
+                                        : 'U',
+                                    style: TextStyle(
+                                        fontSize: mq.height * 0.05,
+                                        color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: MaterialButton(
-                          shape: CircleBorder(),
+                          elevation: 2,
+                          shape: const CircleBorder(),
                           onPressed: _showBottomSheet,
-                          color: Colors.blue,
-                          child: Icon(Icons.edit),
+                          color: const Color(0xFF9333EA),
+                          child: const Icon(Icons.edit, color: Colors.white),
                         ),
                       ),
                     ],
                   ),
 
-                  SizedBox(height: mq.height * 0.03),
+                  SizedBox(height: mq.height * 0.02),
 
                   Text(
                     widget.user.email,
-                    style: TextStyle(color: Colors.black87, fontSize: 16),
+                    style: const TextStyle(
+                        color: Color(0xFF8E92A2), fontSize: 16),
                   ),
 
-                  SizedBox(height: mq.height * 0.03),
+                  SizedBox(height: mq.height * 0.04),
 
                   TextFormField(
                     initialValue: widget.user.name,
+                    style: const TextStyle(color: Colors.white),
                     onSaved: (newValue) => APIs.me.name = newValue ?? '',
-                    validator:
-                        (value) =>
-                            value != null && value.isNotEmpty
-                                ? null
-                                : 'Required Field',
+                    validator: (value) => value != null && value.isNotEmpty
+                        ? null
+                        : 'Required Field',
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: Icon(Icons.person, color: Colors.blue),
+                      filled: true,
+                      fillColor: const Color(0xFF1E2029),
+                      prefixIcon: const Icon(CupertinoIcons.person,
+                          color: Color(0xFF9333EA)),
                       hintText: 'Enter your name',
-                      label: Text('Name'),
+                      hintStyle: const TextStyle(color: Color(0xFF8E92A2)),
+                      labelText: 'Name',
+                      labelStyle: const TextStyle(color: Color(0xFF8E92A2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
 
@@ -137,45 +169,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   TextFormField(
                     initialValue: widget.user.about,
+                    style: const TextStyle(color: Colors.white),
                     onSaved: (newValue) => APIs.me.about = newValue ?? '',
-                    validator:
-                        (value) =>
-                            value != null && value.isNotEmpty
-                                ? null
-                                : 'Required Field',
+                    validator: (value) => value != null && value.isNotEmpty
+                        ? null
+                        : 'Required Field',
                     decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF1E2029),
+                      prefixIcon: const Icon(CupertinoIcons.info,
+                          color: Color(0xFF9333EA)),
+                      hintText: 'Enter about details',
+                      hintStyle: const TextStyle(color: Color(0xFF8E92A2)),
+                      labelText: 'About',
+                      labelStyle: const TextStyle(color: Color(0xFF8E92A2)),
                       border: OutlineInputBorder(
-                        borderSide: BorderSide(style: BorderStyle.solid),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
                       ),
-                      prefixIcon: Icon(Icons.info_outline, color: Colors.blue),
-                      hintText: 'Enter your status',
-                      label: Text('About'),
                     ),
                   ),
 
-                  SizedBox(height: mq.height * 0.03),
+                  SizedBox(height: mq.height * 0.04),
 
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      shape: StadiumBorder(),
-                      minimumSize: Size(mq.width * 0.4, mq.height * 0.06),
+                      backgroundColor: const Color(0xFF9333EA),
+                      minimumSize: Size(mq.width * 0.5, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
                         _formKey.currentState!.save();
                         APIs.updateUserInfo().then((value) {
                           Dialogs.showSnackbar(
-                            context,
-                            'Profile Updated Successfully',
-                          );
+                              context, 'Profile updated successfully!');
                         });
-
-                        log('inside validator');
                       }
                     },
-                    icon: Icon(Icons.edit, size: 28),
-                    label: Text('Update', style: TextStyle(fontSize: 16)),
+                    icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                    label: const Text(
+                      'UPDATE',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -186,68 +227,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  //show bottom sheet for picking a profile pic for user
   void _showBottomSheet() {
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      backgroundColor: const Color(0xFF16171D),
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
       ),
-      builder: (context) {
+      builder: (_) {
         return ListView(
-          //shrinkwrap allows to take only as much space as the contents in it
           shrinkWrap: true,
-          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+          padding: EdgeInsets.only(
+            top: mq.height * 0.03,
+            bottom: mq.height * 0.05,
+          ),
           children: [
-            Text(
+            const Text(
               'Pick Profile Picture',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
-
-            SizedBox(height: 15),
-
+            SizedBox(height: mq.height * 0.02),
             Row(
-              //for picking image from gallery
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    shape: CircleBorder(),
+                    backgroundColor: const Color(0xFF1E2029),
                     fixedSize: Size(mq.width * 0.3, mq.height * 0.15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   onPressed: () async {
-                    Navigator.of(context).pop();
                     final ImagePicker picker = ImagePicker();
-
                     final XFile? image = await picker.pickImage(
                       source: ImageSource.gallery,
                       imageQuality: 80,
                     );
                     if (image != null) {
-                      log(image.path);
                       setState(() {
                         _image = image.path;
                       });
                       APIs.updateUserProfilePicture(File(_image!));
+                      if (mounted) Navigator.pop(context);
                     }
                   },
-                  child: Image.asset('images/add_image.png'),
+                  child: Image.asset('images/add_image.png',
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.image,
+                              color: Color(0xFF9333EA), size: 40)),
                 ),
-
-                //for picking image from camera
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    shape: CircleBorder(),
+                    backgroundColor: const Color(0xFF1E2029),
                     fixedSize: Size(mq.width * 0.3, mq.height * 0.15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   onPressed: () async {
-                    Navigator.of(context).pop();
                     final ImagePicker picker = ImagePicker();
-
                     final XFile? image = await picker.pickImage(
                       source: ImageSource.camera,
                       imageQuality: 80,
@@ -257,10 +303,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _image = image.path;
                       });
                       APIs.updateUserProfilePicture(File(_image!));
+                      if (mounted) Navigator.pop(context);
                     }
-                    Navigator.of(context).pop();
                   },
-                  child: Image.asset('images/camera.png'),
+                  child: Image.asset('images/camera.png',
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.camera_alt,
+                              color: Color(0xFF9333EA), size: 40)),
                 ),
               ],
             ),
@@ -269,6 +318,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
-
-
 }
